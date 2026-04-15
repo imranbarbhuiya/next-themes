@@ -158,6 +158,12 @@ All your theme configuration is passed to ThemeProvider.
   - value is an `object` where key is the theme name and value is the attribute value ([example](#differing-dom-attribute-and-theme-name))
 - `nonce`: Optional nonce passed to the injected `script` tag, used to allow-list the next-themes script in your CSP
 - `scriptProps`: Optional props to pass to the injected `script` tag ([example](#using-with-cloudflare-rocket-loader))
+- `styles`: Optional list of style names (e.g. `['ocean', 'mono', 'reddish']`). Styles are orthogonal to themes — each style can have its own light/dark variants ([example](#styles-accent-themes))
+- `defaultStyle`: Default style name
+- `forcedStyle`: Forced style name for the current page
+- `styleStorageKey = 'style'`: Key used to store style setting in localStorage
+- `styleAttribute = 'data-style'`: HTML attribute modified based on the active style. Accepts `class`, `data-*`, or an array
+- `styleValue`: Optional mapping of style name to attribute value
 
 ### useTheme
 
@@ -169,6 +175,10 @@ useTheme takes no parameters, but returns:
 - `resolvedTheme`: If `enableSystem` is true and the active theme is "system", this returns whether the system preference resolved to "dark" or "light". Otherwise, identical to `theme`
 - `systemTheme`: If `enableSystem` is true, represents the System theme preference ("dark" or "light"), regardless what the active theme is
 - `themes`: The list of themes passed to `ThemeProvider` (with "system" appended, if `enableSystem` is true)
+- `style`: Active style name
+- `setStyle(name)`: Function to update the style. Same API as `setTheme`
+- `styles`: The list of styles passed to `ThemeProvider`
+- `forcedStyle`: Forced page style or falsy
 
 Not too bad, right? Let's see how to use these properties with examples:
 
@@ -291,6 +301,73 @@ next-themes is designed to support any number of themes! Simply pass a list of t
 ```
 
 For an example on how to use this, check out the [multi-theme example](./examples/multi-theme/README.md)
+
+### Styles (Accent Themes)
+
+Styles allow you to offer users a second dimension of theming, orthogonal to dark/light mode. For example, you might offer "ocean", "mono", and "reddish" accent themes, each with their own light and dark variants.
+
+```jsx
+<ThemeProvider styles={['ocean', 'mono', 'reddish']} defaultStyle="ocean">
+```
+
+Then in your component, use `setStyle` to switch between styles:
+
+```jsx
+import { useTheme } from 'next-themes'
+
+const StyleChanger = () => {
+  const { style, setStyle, theme, setTheme } = useTheme()
+
+  return (
+    <div>
+      <p>Current style: {style}</p>
+      <p>Current theme: {theme}</p>
+      <button onClick={() => setStyle('ocean')}>Ocean</button>
+      <button onClick={() => setStyle('mono')}>Mono</button>
+      <button onClick={() => setStyle('reddish')}>Reddish</button>
+      <button onClick={() => setTheme('light')}>Light</button>
+      <button onClick={() => setTheme('dark')}>Dark</button>
+    </div>
+  )
+}
+```
+
+By default, styles are applied via the `data-style` attribute. You can then use CSS to define style-specific variables:
+
+```css
+:root {
+  --accent: blue;
+}
+
+[data-style='ocean'] {
+  --accent: teal;
+}
+
+[data-style='reddish'] {
+  --accent: crimson;
+}
+
+[data-style='mono'] {
+  --accent: gray;
+}
+
+/* Combine with themes for style+theme specific overrides */
+[data-theme='dark'][data-style='ocean'] {
+  --accent: cyan;
+}
+```
+
+You can customize the style attribute, storage key, and value mapping just like themes:
+
+```jsx
+<ThemeProvider
+  styles={['ocean', 'mono']}
+  defaultStyle="ocean"
+  styleAttribute="data-accent"
+  styleStorageKey="accent"
+  styleValue={{ ocean: 'theme-ocean', mono: 'theme-mono' }}
+>
+```
 
 ### Without CSS variables
 

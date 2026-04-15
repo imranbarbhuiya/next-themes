@@ -27,6 +27,14 @@ export interface UseThemeProps {
   resolvedTheme?: string | undefined
   /** If enableSystem is true, returns the System theme preference ("dark" or "light"), regardless what the active theme is */
   systemTheme?: 'dark' | 'light' | undefined
+  /** List of all available style names */
+  styles: string[]
+  /** Active style name */
+  style?: string | undefined
+  /** Update the style */
+  setStyle: React.Dispatch<React.SetStateAction<string>>
+  /** Forced style name for the current page */
+  forcedStyle?: string | undefined
 }
 
 export type Attribute = DataAttribute | 'class'
@@ -54,4 +62,16 @@ export interface ThemeProviderProps extends React.PropsWithChildren<unknown> {
   nonce?: string
   /** Props to pass the inline script */
   scriptProps?: ScriptProps
+  /** List of all available style names (e.g. ['ocean', 'mono', 'reddish']). Styles are orthogonal to themes — each style has its own light/dark variants. */
+  styles?: string[] | undefined
+  /** Default style name */
+  defaultStyle?: string | undefined
+  /** Forced style name for the current page */
+  forcedStyle?: string | undefined
+  /** Key used to store style setting in localStorage */
+  styleStorageKey?: string | undefined
+  /** HTML attribute modified based on the active style. Accepts `class`, `data-*`, or an array. Defaults to 'data-style' */
+  styleAttribute?: Attribute | Attribute[] | undefined
+  /** Mapping of style name to HTML attribute value. Object where key is the style name and value is the attribute value */
+  styleValue?: ValueObject | undefined
 }
