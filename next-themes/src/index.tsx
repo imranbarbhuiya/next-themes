@@ -8,7 +8,7 @@ const colorSchemes = ['light', 'dark']
 const MEDIA = '(prefers-color-scheme: dark)'
 const isServer = typeof window === 'undefined'
 const ThemeContext = React.createContext<UseThemeProps | undefined>(undefined)
-const defaultContext: UseThemeProps = { setTheme: _ => { }, themes: [] }
+const defaultContext: UseThemeProps = { setTheme: _ => { }, themes: [], setStyle: _ => { }, styles: [] }
 
 const saveToLS = (storageKey: string, value: string) => {
   // Save to storage
@@ -30,6 +30,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
 }
 
 const defaultThemes = ['light', 'dark']
+const defaultStyles: string[] = []
 
 const Theme = ({
   forcedTheme,
@@ -43,11 +44,20 @@ const Theme = ({
   value,
   children,
   nonce,
-  scriptProps
+  scriptProps,
+  styles = defaultStyles,
+  defaultStyle = '',
+  forcedStyle,
+  styleStorageKey = 'style',
+  styleAttribute = 'data-style',
+  styleValue
 }: ThemeProviderProps) => {
   const [theme, setThemeState] = React.useState(() => getTheme(storageKey, defaultTheme))
   const [resolvedTheme, setResolvedTheme] = React.useState(() => theme === 'system' ? getSystemTheme() : theme)
   const attrs = !value ? themes : Object.values(value)
+
+  const [style, setStyleState] = React.useState(() => getTheme(styleStorageKey, defaultStyle))
+  const styleAttrs = !styleValue ? styles : Object.values(styleValue)
 
   const applyTheme = React.useCallback(theme => {
     let resolved = theme
@@ -88,6 +98,32 @@ const Theme = ({
     enable?.()
   }, [nonce])
 
+  const applyStyle = React.useCallback((styleName: string) => {
+    if (!styleName || styles.length === 0) return
+
+    const name = styleValue ? styleValue[styleName] : styleName
+    const enable = disableTransitionOnChange ? disableAnimation(nonce) : null
+    const d = document.documentElement
+
+    const handleAttribute = (attr: Attribute) => {
+      if (attr === 'class') {
+        d.classList.remove(...styleAttrs)
+        if (name) d.classList.add(name)
+      } else if (attr.startsWith('data-')) {
+        if (name) {
+          d.setAttribute(attr, name)
+        } else {
+          d.removeAttribute(attr)
+        }
+      }
+    }
+
+    if (Array.isArray(styleAttribute)) styleAttribute.forEach(handleAttribute)
+    else handleAttribute(styleAttribute)
+
+    enable?.()
+  }, [nonce])
+
   const setTheme = React.useCallback(value => {
     if (typeof value === 'function') {
       setThemeState(prevTheme => {
@@ -100,6 +136,21 @@ const Theme = ({
     } else {
       setThemeState(value)
       saveToLS(storageKey, value)
+    }
+  }, [])
+
+  const setStyle = React.useCallback(value => {
+    if (typeof value === 'function') {
+      setStyleState(prevStyle => {
+        const newStyle = value(prevStyle)
+
+        saveToLS(styleStorageKey, newStyle)
+
+        return newStyle
+      })
+    } else {
+      setStyleState(value)
+      saveToLS(styleStorageKey, value)
     }
   }, [])
 
@@ -129,26 +180,38 @@ const Theme = ({
   // localStorage event handling
   React.useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key !== storageKey) {
-        return
+      if (e.key === storageKey) {
+        // If default theme set, use it if localstorage === null (happens on local storage manual deletion)
+        if (!e.newValue) {
+          setTheme(defaultTheme)
+        } else {
+          setThemeState(e.newValue) // Direct state update to avoid loops
+        }
       }
 
-      // If default theme set, use it if localstorage === null (happens on local storage manual deletion)
-      if (!e.newValue) {
-        setTheme(defaultTheme)
-      } else {
-        setThemeState(e.newValue) // Direct state update to avoid loops
+      if (e.key === styleStorageKey) {
+        if (!e.newValue) {
+          setStyle(defaultStyle)
+        } else {
+          setStyleState(e.newValue)
+        }
       }
     }
 
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
-  }, [setTheme])
+  }, [setTheme, setStyle])
 
   // Whenever theme or forcedTheme changes, apply it
   React.useEffect(() => {
     applyTheme(forcedTheme ?? theme)
   }, [forcedTheme, theme])
+
+  // Whenever style or forcedStyle changes, apply it
+  React.useEffect(() => {
+    const activeStyle = forcedStyle ?? style
+    if (activeStyle) applyStyle(activeStyle)
+  }, [forcedStyle, style])
 
   const providerValue = React.useMemo(
     () => ({
@@ -157,9 +220,13 @@ const Theme = ({
       forcedTheme,
       resolvedTheme: theme === 'system' ? resolvedTheme : theme,
       themes: enableSystem ? [...themes, 'system'] : themes,
-      systemTheme: (enableSystem ? resolvedTheme : undefined) as 'light' | 'dark' | undefined
+      systemTheme: (enableSystem ? resolvedTheme : undefined) as 'light' | 'dark' | undefined,
+      style,
+      setStyle,
+      styles,
+      forcedStyle
     }),
-    [theme, setTheme, forcedTheme, resolvedTheme, enableSystem, themes]
+    [theme, setTheme, forcedTheme, resolvedTheme, enableSystem, themes, style, setStyle, styles, forcedStyle]
   )
 
   return (
@@ -175,7 +242,13 @@ const Theme = ({
           value,
           themes,
           nonce,
-          scriptProps
+          scriptProps,
+          styles,
+          defaultStyle,
+          forcedStyle,
+          styleStorageKey,
+          styleAttribute,
+          styleValue
         }}
       />
 
@@ -195,7 +268,13 @@ export const ThemeScript = React.memo(
     value,
     themes,
     nonce,
-    scriptProps
+    scriptProps,
+    styles,
+    defaultStyle,
+    forcedStyle,
+    styleStorageKey,
+    styleAttribute,
+    styleValue
   }: Omit<ThemeProviderProps, 'children'> & { defaultTheme: string }) => {
     const scriptArgs = JSON.stringify([
       attribute,
@@ -205,7 +284,13 @@ export const ThemeScript = React.memo(
       themes,
       value,
       enableSystem,
-      enableColorScheme
+      enableColorScheme,
+      styleAttribute,
+      styleStorageKey,
+      defaultStyle,
+      forcedStyle,
+      styles,
+      styleValue
     ]).slice(1, -1)
 
     return (

@@ -6,7 +6,13 @@ export const script = (
   themes,
   value,
   enableSystem,
-  enableColorScheme
+  enableColorScheme,
+  styleAttribute,
+  styleStorageKey,
+  defaultStyle,
+  forcedStyle,
+  styles,
+  styleValue
 ) => {
   const el = document.documentElement
   const systemThemes = ['light', 'dark']
@@ -26,6 +32,26 @@ export const script = (
     })
 
     setColorScheme(theme)
+  }
+
+  function updateStyleDOM(style: string) {
+    if (!styles || styles.length === 0) return
+    const attributes = Array.isArray(styleAttribute) ? styleAttribute : [styleAttribute]
+
+    attributes.forEach(attr => {
+      const isClass = attr === 'class'
+      const classes = isClass && styleValue ? styles.map(s => styleValue[s] || s) : styles
+      if (isClass) {
+        el.classList.remove(...classes)
+        if (style) el.classList.add(styleValue && styleValue[style] ? styleValue[style] : style)
+      } else {
+        if (style) {
+          el.setAttribute(attr, styleValue && styleValue[style] ? styleValue[style] : style)
+        } else {
+          el.removeAttribute(attr)
+        }
+      }
+    })
   }
 
   function setColorScheme(theme: string) {
@@ -48,6 +74,19 @@ export const script = (
       updateDOM(theme)
     } catch (e) {
       //
+    }
+  }
+
+  if (styles && styles.length > 0) {
+    if (forcedStyle) {
+      updateStyleDOM(forcedStyle)
+    } else {
+      try {
+        const styleName = localStorage.getItem(styleStorageKey) || defaultStyle
+        if (styleName) updateStyleDOM(styleName)
+      } catch (e) {
+        //
+      }
     }
   }
 }

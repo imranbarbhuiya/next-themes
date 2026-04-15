@@ -29,8 +29,8 @@ const localStorageMock: Storage = (() => {
 })()
 
 // HelperComponent to render the theme inside a paragraph-tag and setting a theme via the forceSetTheme prop
-const HelperComponent = ({ forceSetTheme }: { forceSetTheme?: string }) => {
-  const { setTheme, theme, forcedTheme, resolvedTheme, systemTheme } = useTheme()
+const HelperComponent = ({ forceSetTheme, forceSetStyle }: { forceSetTheme?: string, forceSetStyle?: string }) => {
+  const { setTheme, theme, forcedTheme, resolvedTheme, systemTheme, setStyle, style, styles, forcedStyle } = useTheme()
 
   React.useEffect(() => {
     if (forceSetTheme) {
@@ -38,12 +38,21 @@ const HelperComponent = ({ forceSetTheme }: { forceSetTheme?: string }) => {
     }
   }, [forceSetTheme])
 
+  React.useEffect(() => {
+    if (forceSetStyle) {
+      setStyle(forceSetStyle)
+    }
+  }, [forceSetStyle])
+
   return (
     <>
       <p data-testid="theme">{theme}</p>
       <p data-testid="forcedTheme">{forcedTheme}</p>
       <p data-testid="resolvedTheme">{resolvedTheme}</p>
       <p data-testid="systemTheme">{systemTheme}</p>
+      <p data-testid="style">{style}</p>
+      <p data-testid="forcedStyle">{forcedStyle}</p>
+      <p data-testid="styles">{styles.join(',')}</p>
     </>
   )
 }
@@ -77,6 +86,8 @@ beforeEach(() => {
   setDeviceTheme('light')
   document.documentElement.style.colorScheme = ''
   document.documentElement.removeAttribute('data-theme')
+  document.documentElement.removeAttribute('data-style')
+  document.documentElement.removeAttribute('data-accent')
   document.documentElement.removeAttribute('class')
 
   // Clear the localStorage-mock
@@ -498,5 +509,170 @@ describe('inline script', () => {
     })
 
     expect(document.querySelector('script[data-test="1234"]')).toBeTruthy()
+  })
+})
+
+describe('styles', () => {
+  test('should return empty styles by default', () => {
+    const { result } = renderHook(() => useTheme(), {
+      wrapper: makeWrapper({})
+    })
+
+    expect(result.current.styles).toEqual([])
+    expect(result.current.style).toBe('')
+  })
+
+  test('should return configured styles', () => {
+    const { result } = renderHook(() => useTheme(), {
+      wrapper: makeWrapper({ styles: ['ocean', 'mono', 'reddish'], defaultStyle: 'ocean' })
+    })
+
+    expect(result.current.styles).toEqual(['ocean', 'mono', 'reddish'])
+    expect(result.current.style).toBe('ocean')
+  })
+
+  test('should set data-style attribute', () => {
+    act(() => {
+      render(
+        <ThemeProvider styles={['ocean', 'mono']} defaultStyle="ocean">
+          <HelperComponent forceSetStyle="ocean" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(document.documentElement.getAttribute('data-style')).toBe('ocean')
+  })
+
+  test('should switch styles', () => {
+    act(() => {
+      render(
+        <ThemeProvider styles={['ocean', 'mono']} defaultStyle="ocean">
+          <HelperComponent forceSetStyle="mono" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(document.documentElement.getAttribute('data-style')).toBe('mono')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('style', 'mono')
+  })
+
+  test('should use custom styleStorageKey', () => {
+    act(() => {
+      render(
+        <ThemeProvider styles={['ocean', 'mono']} defaultStyle="ocean" styleStorageKey="accent">
+          <HelperComponent forceSetStyle="mono" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('accent', 'mono')
+  })
+
+  test('should use custom styleAttribute', () => {
+    act(() => {
+      render(
+        <ThemeProvider styles={['ocean', 'mono']} defaultStyle="ocean" styleAttribute="data-accent">
+          <HelperComponent forceSetStyle="ocean" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(document.documentElement.getAttribute('data-accent')).toBe('ocean')
+  })
+
+  test('should use class attribute for style', () => {
+    act(() => {
+      render(
+        <ThemeProvider styles={['ocean', 'mono']} defaultStyle="ocean" styleAttribute="class">
+          <HelperComponent forceSetStyle="ocean" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(document.documentElement.classList.contains('ocean')).toBeTruthy()
+  })
+
+  test('should use styleValue mapping', () => {
+    act(() => {
+      render(
+        <ThemeProvider
+          styles={['ocean', 'mono']}
+          defaultStyle="ocean"
+          styleValue={{ ocean: 'my-ocean-style', mono: 'my-mono-style' }}
+        >
+          <HelperComponent forceSetStyle="ocean" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(document.documentElement.getAttribute('data-style')).toBe('my-ocean-style')
+  })
+
+  test('should support forcedStyle', () => {
+    const { result } = renderHook(() => useTheme(), {
+      wrapper: makeWrapper({ styles: ['ocean', 'mono'], defaultStyle: 'ocean', forcedStyle: 'mono' })
+    })
+
+    expect(result.current.style).toBe('ocean')
+    expect(result.current.forcedStyle).toBe('mono')
+  })
+
+  test('should work alongside themes independently', () => {
+    act(() => {
+      render(
+        <ThemeProvider
+          defaultTheme="dark"
+          styles={['ocean', 'mono']}
+          defaultStyle="ocean"
+        >
+          <HelperComponent forceSetTheme="dark" forceSetStyle="mono" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    expect(document.documentElement.getAttribute('data-style')).toBe('mono')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('theme', 'dark')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('style', 'mono')
+  })
+
+  test('setStyle(<function>)', () => {
+    const { result, rerender } = renderHook(() => useTheme(), {
+      wrapper: ({ children }) => (
+        <ThemeProvider styles={['ocean', 'mono']} defaultStyle="ocean">
+          {children}
+        </ThemeProvider>
+      )
+    })
+
+    expect(result.current.style).toBe('ocean')
+    result.current.setStyle((prev: string) => (prev === 'ocean' ? 'mono' : 'ocean'))
+    rerender()
+    expect(result.current.style).toBe('mono')
+  })
+
+  test('should not set localStorage with default style value', () => {
+    renderHook(() => useTheme(), {
+      wrapper: makeWrapper({ styles: ['ocean', 'mono'], defaultStyle: 'ocean' })
+    })
+
+    expect(window.localStorage.getItem('style')).toBeNull()
+  })
+
+  test('should support multiple style attributes', () => {
+    act(() => {
+      render(
+        <ThemeProvider
+          styles={['ocean', 'mono']}
+          defaultStyle="ocean"
+          styleAttribute={['data-style', 'data-accent']}
+        >
+          <HelperComponent forceSetStyle="ocean" />
+        </ThemeProvider>
+      )
+    })
+
+    expect(document.documentElement.getAttribute('data-style')).toBe('ocean')
+    expect(document.documentElement.getAttribute('data-accent')).toBe('ocean')
   })
 })
