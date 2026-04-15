@@ -35,7 +35,7 @@ export const script = (
   }
 
   function updateStyleDOM(style: string) {
-    if (!styles || styles.length === 0) return
+    if (!styles?.length) return
     const attributes = Array.isArray(styleAttribute) ? styleAttribute : [styleAttribute]
 
     attributes.forEach(attr => {
@@ -77,7 +77,7 @@ export const script = (
     }
   }
 
-  if (styles && styles.length > 0) {
+  if (styles?.length) {
     if (forcedStyle) {
       updateStyleDOM(forcedStyle)
     } else {

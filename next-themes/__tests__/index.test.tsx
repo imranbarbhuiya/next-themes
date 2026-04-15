@@ -661,7 +661,7 @@ describe('styles', () => {
     })
 
     expect(result.current.style).toBe('ocean')
-    result.current.setStyle((prev: string) => (prev === 'ocean' ? 'mono' : 'ocean'))
+    result.current.setStyle((prev) => (prev === 'ocean' ? 'mono' : 'ocean'))
     rerender()
     expect(result.current.style).toBe('mono')
   })

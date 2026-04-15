@@ -110,7 +110,7 @@ const Theme = ({
 
   const applyStyle = React.useCallback(
     (styleName: string) => {
-      if (!styleName || styles.length === 0) return
+      if (!styleName || !styles.length) return
 
       const name = styleValue ? styleValue[styleName] : styleName
       const enable = disableTransitionOnChange ? disableAnimation(nonce) : null
