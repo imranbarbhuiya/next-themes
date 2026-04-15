@@ -29,8 +29,24 @@ const localStorageMock: Storage = (() => {
 })()
 
 // HelperComponent to render the theme inside a paragraph-tag and setting a theme via the forceSetTheme prop
-const HelperComponent = ({ forceSetTheme, forceSetStyle }: { forceSetTheme?: string, forceSetStyle?: string }) => {
-  const { setTheme, theme, forcedTheme, resolvedTheme, systemTheme, setStyle, style, styles, forcedStyle } = useTheme()
+const HelperComponent = ({
+  forceSetTheme,
+  forceSetStyle
+}: {
+  forceSetTheme?: string
+  forceSetStyle?: string
+}) => {
+  const {
+    setTheme,
+    theme,
+    forcedTheme,
+    resolvedTheme,
+    systemTheme,
+    setStyle,
+    style,
+    styles,
+    forcedStyle
+  } = useTheme()
 
   React.useEffect(() => {
     if (forceSetTheme) {
@@ -472,18 +488,18 @@ describe('setTheme', () => {
   })
 
   test('setTheme(<function>) gets relevant state value', () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { })
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     const { result } = renderHook(() => useTheme(), {
       wrapper: ({ children }) => <ThemeProvider defaultTheme="light">{children}</ThemeProvider>
     })
 
     act(() => {
-      result.current.setTheme((theme) => {
+      result.current.setTheme(theme => {
         console.log('1', theme)
         return theme === 'dark' ? 'light' : 'dark'
       })
-      result.current.setTheme((theme) => {
+      result.current.setTheme(theme => {
         console.log('2', theme)
         return theme === 'light' ? 'dark' : 'light'
       })
@@ -495,7 +511,6 @@ describe('setTheme', () => {
 
     consoleSpy.mockRestore()
   })
-
 })
 
 describe('inline script', () => {
@@ -610,7 +625,11 @@ describe('styles', () => {
 
   test('should support forcedStyle', () => {
     const { result } = renderHook(() => useTheme(), {
-      wrapper: makeWrapper({ styles: ['ocean', 'mono'], defaultStyle: 'ocean', forcedStyle: 'mono' })
+      wrapper: makeWrapper({
+        styles: ['ocean', 'mono'],
+        defaultStyle: 'ocean',
+        forcedStyle: 'mono'
+      })
     })
 
     expect(result.current.style).toBe('ocean')
@@ -620,11 +639,7 @@ describe('styles', () => {
   test('should work alongside themes independently', () => {
     act(() => {
       render(
-        <ThemeProvider
-          defaultTheme="dark"
-          styles={['ocean', 'mono']}
-          defaultStyle="ocean"
-        >
+        <ThemeProvider defaultTheme="dark" styles={['ocean', 'mono']} defaultStyle="ocean">
           <HelperComponent forceSetTheme="dark" forceSetStyle="mono" />
         </ThemeProvider>
       )
